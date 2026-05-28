@@ -1,0 +1,19 @@
+# 루트 — 스택 공통(IDE / OS / 로그)만. Node/Python 규칙은 frontend/, backend/ 각자 .gitignore.
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 일반 로그
+*.log
+
+# 루트 레벨 환경변수 (docker-compose 등이 참조)
+.env
+.env.local

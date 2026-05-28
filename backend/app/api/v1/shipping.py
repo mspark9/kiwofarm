@@ -2,14 +2,14 @@ from datetime import date, timedelta
 
 from fastapi import APIRouter
 
-from app.schemas.dashboard import (
+from app.schemas.shipping import (
     PeerFarmStat,
     PricePoint,
     ShippingDashboard,
     ShippingDecision,
 )
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter(prefix="/shipping", tags=["shipping"])
 
 CROP_NAMES = {
     "tomato": "토마토",
@@ -45,19 +45,19 @@ def _mock_series(today: date, base: int = 4200) -> list[PricePoint]:
     return series
 
 
-@router.get("/shipping", response_model=ShippingDashboard)
+@router.get("", response_model=ShippingDashboard)
 async def shipping_dashboard(
     crop: str = "tomato",
     region: str = "옥천",
 ) -> ShippingDashboard:
     """
-    출하 의사결정 대시보드.
+    출하 도우미 (출하 의사결정).
 
     TODO 실데이터 연동:
       - price_series 실측: KAMIS 14일 도매가
       - price_series 예측: Prophet 14일 forecast (yhat, yhat_lower, yhat_upper)
       - peer: 스마트팜코리아 우수농가 동일 시점 출하 패턴
-      - decision: shipping_score.compute() — 가격 추세 + 기상 + 우수농가 결합
+      - decision: core.shipping.score.compute() — 가격 추세 + 기상 + 우수농가 결합
     """
     today = date.today()
     series = _mock_series(today)

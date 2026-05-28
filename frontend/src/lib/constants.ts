@@ -5,15 +5,6 @@ export type CropId = (typeof CROPS)[number];
 
 export const ONBOARDING_STORAGE_KEY = 'kiwofarm:onboarding';
 
-export const REGION_OPTIONS = [
-  { value: '옥천', label: '충북 옥천' },
-  { value: '청양', label: '충남 청양' },
-  { value: '나주', label: '전남 나주' },
-  { value: '담양', label: '전남 담양' },
-  { value: '상주', label: '경북 상주' },
-  { value: '의성', label: '경북 의성' },
-];
-
 export const PREFERRED_CROP_OPTIONS = [
   { value: 'tomato', label: '토마토' },
   { value: 'sweetpotato', label: '고구마' },

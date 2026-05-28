@@ -44,11 +44,20 @@ import type {
   OnboardingInput,
   VisitFrequency,
 } from '@/lib/types';
+import { ONBOARDING_STORAGE_KEY, PREFERRED_CROP_OPTIONS } from '@/lib/constants';
 import {
-  ONBOARDING_STORAGE_KEY,
-  PREFERRED_CROP_OPTIONS,
-  REGION_OPTIONS,
-} from '@/lib/constants';
+  PROVINCE_OPTIONS,
+  getCitiesByProvince,
+  getProvinceByCity,
+} from '@/lib/regions';
+
+const COMMON_FEATURES = [
+  'AI 작목 추천',
+  '디지털 트윈',
+  '출하 도우미',
+  '영농 캘린더',
+  '카톡 알림',
+];
 
 const MODE_CARDS: {
   id: Mode;
@@ -59,25 +68,33 @@ const MODE_CARDS: {
   color: 'green' | 'teal';
   icon: React.ReactNode;
 }[] = [
-  {
-    id: 'returning',
-    title: '귀농 모드',
-    subtitle: '수익 작목 + 1년 경영 시뮬',
-    desc: '귀농 준비~정착 1~3년차. 작목을 고르고 1년 매출·노동·위기를 미리 봅니다.',
-    bullets: ['AI 작목 추천 TOP 3', '디지털 트윈 1년 시뮬', '출하 의사결정 대시보드'],
-    color: 'green',
-    icon: <IconHome2 size={24} />,
-  },
-  {
-    id: 'weekend',
-    title: '주말농장 모드',
-    subtitle: '생육 관리 + 직거래·이웃나눔',
-    desc: '도시 텃밭·주말농장. 수확량을 예측하고 직거래와 이웃나눔으로 연결합니다.',
-    bullets: ['예상 수확량 시뮬', '병해충 진단', '직거래·이웃나눔'],
-    color: 'teal',
-    icon: <IconLeaf size={24} />,
-  },
-];
+    {
+      id: 'returning',
+      title: '귀농 모드',
+      subtitle: '수익 작목 + 1년 경영 시뮬',
+      desc: '귀농 준비~정착 1~3년차. 작목을 고르고 1년 매출·노동·위기를 미리 봅니다.',
+      bullets: [
+        '자본금·시설 기반 정밀 매칭',
+        '1~3년 경영 계획 시뮬',
+        '우수농가 벤치마크 수익 분석',
+      ],
+      color: 'green',
+      icon: <IconHome2 size={24} />,
+    },
+    {
+      id: 'weekend',
+      title: '주말농장 모드',
+      subtitle: '생육 관리 + 직거래·이웃나눔',
+      desc: '도시 텃밭·주말농장. 수확량을 예측하고 직거래와 이웃나눔으로 연결합니다.',
+      bullets: [
+        '직거래·이웃나눔 연결',
+        '방문 빈도 맞춤 작목',
+        '가족 단위 수확량 기준',
+      ],
+      color: 'teal',
+      icon: <IconLeaf size={24} />,
+    },
+  ];
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -87,7 +104,7 @@ export default function OnboardingPage() {
   const form = useForm<OnboardingInput>({
     initialValues: {
       mode: 'returning',
-      region: '옥천',
+      region: '옥천군',
       area: 300,
       areaUnit: 'pyeong',
       laborCount: 2,
@@ -115,7 +132,7 @@ export default function OnboardingPage() {
     const payload = form.values;
     try {
       sessionStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(payload));
-    } catch {}
+    } catch { }
     router.push(`/recommend/result?mode=${payload.mode}`);
   };
 
@@ -194,6 +211,34 @@ function ModeSelect({
           모드에 따라 추천 작목과 시뮬레이션 항목이 달라집니다.
         </Text>
       </Box>
+
+      <Card
+        radius="md"
+        p="sm"
+        withBorder
+        bg="green.0"
+        style={{ borderColor: 'var(--mantine-color-green-2)' }}
+      >
+        <Group gap="xs" wrap="wrap" align="center">
+          <Group gap={6} wrap="nowrap">
+            <ThemeIcon size={22} radius="xl" color="green" variant="filled">
+              <IconSparkles size={12} />
+            </ThemeIcon>
+            <Text size="xs" fw={800} c="green.9" tt="uppercase" style={{ letterSpacing: 0.6 }}>
+              두 모드 공통 기능
+            </Text>
+          </Group>
+          <Box style={{ width: 1, height: 14, background: 'var(--mantine-color-green-3)' }} />
+          <Group gap={6} wrap="wrap">
+            {COMMON_FEATURES.map((f) => (
+              <Badge key={f} color="green" variant="light" radius="sm" size="sm">
+                {f}
+              </Badge>
+            ))}
+          </Group>
+        </Group>
+      </Card>
+
       <Grid gutter="md">
         {MODE_CARDS.map((card) => {
           const selected = mode === card.id;
@@ -209,11 +254,10 @@ function ModeSelect({
                   p="lg"
                   h="100%"
                   style={{
-                    border: `2px solid ${
-                      selected
+                    border: `2px solid ${selected
                         ? `var(--mantine-color-${card.color}-6)`
                         : 'var(--mantine-color-gray-2)'
-                    }`,
+                      }`,
                     background: selected
                       ? `var(--mantine-color-${card.color}-0)`
                       : 'white',
@@ -243,24 +287,36 @@ function ModeSelect({
                     <Text size="sm" c="dimmed" lh={1.6}>
                       {card.desc}
                     </Text>
-                    <Stack gap={6} mt={4}>
-                      {card.bullets.map((b) => (
-                        <Group key={b} gap={6} wrap="nowrap">
-                          <Box
-                            w={5}
-                            h={5}
-                            style={{
-                              borderRadius: 99,
-                              background: `var(--mantine-color-${card.color}-6)`,
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Text size="xs" c="gray.7">
-                            {b}
-                          </Text>
-                        </Group>
-                      ))}
-                    </Stack>
+                    <Box>
+                      <Text
+                        size="xs"
+                        c={card.color === 'green' ? 'green.7' : 'teal.7'}
+                        fw={800}
+                        tt="uppercase"
+                        mb={6}
+                        style={{ letterSpacing: 0.6 }}
+                      >
+                        이 모드만의 차별점
+                      </Text>
+                      <Stack gap={6}>
+                        {card.bullets.map((b) => (
+                          <Group key={b} gap={6} wrap="nowrap">
+                            <Box
+                              w={5}
+                              h={5}
+                              style={{
+                                borderRadius: 99,
+                                background: `var(--mantine-color-${card.color}-6)`,
+                                flexShrink: 0,
+                              }}
+                            />
+                            <Text size="xs" c="gray.7">
+                              {b}
+                            </Text>
+                          </Group>
+                        ))}
+                      </Stack>
+                    </Box>
                   </Stack>
                 </Card>
               </UnstyledButton>
@@ -293,12 +349,10 @@ function ConditionForm({
       <Card radius="lg" p="lg" withBorder bg="white">
         <Stack gap="lg">
           <FieldRow icon={<IconMapPin size={16} />} label="지역">
-            <Select
-              data={REGION_OPTIONS}
-              placeholder="시·군 선택"
-              {...form.getInputProps('region')}
-              allowDeselect={false}
-              searchable
+            <RegionPicker
+              value={form.values.region}
+              onChange={(v) => form.setFieldValue('region', v)}
+              error={form.errors.region as string | undefined}
             />
           </FieldRow>
 
@@ -397,6 +451,53 @@ function ConditionForm({
         </Group>
       </Card>
     </Stack>
+  );
+}
+
+function RegionPicker({
+  value,
+  onChange,
+  error,
+}: {
+  value: string;
+  onChange: (city: string) => void;
+  error?: string;
+}) {
+  const [province, setProvince] = useState<string>(
+    () => getProvinceByCity(value) ?? '충청북도',
+  );
+  const cities = getCitiesByProvince(province);
+
+  return (
+    <Group gap="xs" wrap="nowrap" align="flex-start">
+      <Select
+        data={PROVINCE_OPTIONS}
+        value={province}
+        onChange={(v) => {
+          if (!v) return;
+          setProvince(v);
+          const nextCities = getCitiesByProvince(v);
+          if (!nextCities.includes(value)) onChange(nextCities[0] ?? '');
+        }}
+        allowDeselect={false}
+        searchable
+        placeholder="시·도"
+        w={170}
+        nothingFoundMessage="검색 결과 없음"
+      />
+      <Select
+        data={cities}
+        value={value}
+        onChange={(v) => onChange(v ?? '')}
+        allowDeselect={false}
+        searchable
+        placeholder="시·군·구"
+        flex={1}
+        nothingFoundMessage="검색 결과 없음"
+        error={error}
+        disabled={cities.length === 0}
+      />
+    </Group>
   );
 }
 

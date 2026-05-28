@@ -1,85 +1,35 @@
-# 키워팜 (KiwoFarm)
+# KiwoFarm — Rulebook
 
-5주 MVP 해커톤 프로젝트. 귀농인·주말농장인을 위한 AI 기반 작목 추천 + 디지털 트윈 1년 시뮬레이션 + 출하 의사결정 대시보드.
+5-week MVP hackathon. AI crop recommendation + 1-year digital twin + shipping-decision dashboard for 귀농인 / 주말농장인. Roadmap: `키워팜_5주_MVP_구현_로드맵.md`.
 
-상세 일정·요구사항은 `키워팜_5주_MVP_구현_로드맵.md` 참고 (이 문서는 그 요약본).
+## 1. Tech Stack
 
-## 마감
+**Monorepo**: `frontend/` (Next.js) + `backend/` (FastAPI).
 
-- **제출**: 2026-06-30 23:59
-- **시상식**: 2026-08-13
+**Frontend** — Next.js 14 App Router, TypeScript strict, Mantine v7 (+ `@mantine/charts`, `@mantine/form`, `@tabler/icons-react`), TanStack Query, Pretendard via CDN. Deploy: Vercel.
+Routes: `/onboarding`, `/recommend/result`, `/twin/[cropId]`, `/dashboard`, `/calendar`.
 
-## 구현 원칙
+**Backend** — Python 3.11, FastAPI, SQLAlchemy, Alembic, PostgreSQL 16. **Env: uv only** (`uv add` / `uv sync` / `uv run` — no pip, poetry, or requirements.txt). Entry `app/main.py`, domain `app/core/{recommend,twin,dashboard}/`, public-data clients `app/data/`. Local DB via docker-compose; prod Railway.
 
-**가능하면 모든 기능을 진짜로 만든다.** 로드맵 원문은 P0~P3 등급으로 일부만 진짜·일부는 더미로 가는 안전 전략이지만, 이 프로젝트는 8개 기능 전부를 P0 수준(진짜 AI + 진짜 데이터, 심사위원이 직접 클릭해도 작동) 으로 끌어올리는 것을 목표로 한다.
+**AI/ML** — Recommend: **XGBoost + rule-based hybrid**. Forecast: **Prophet** (LSTM is presentation-only). NL reasoning: **GPT-4o** (`core/recommend/llm_reason.py`). Twin: **deterministic sim + noise** (no RL).
 
-대상 8개 기능:
-1. 모드 선택 (귀농 / 주말농장)
-2. AI 작목 추천 TOP 3
-3. 디지털 트윈 1년 시뮬레이션
-4. 출하 의사결정 대시보드
-5. 영농 캘린더
-6. 카톡 알림
-7. 주말농장 직거래·이웃나눔
-8. B2G 라이센스
+**Public data** — SmartFarmKorea CSV (112 farms), Nongsaro (crops/pests), KAMIS (wholesale), KMA ASOS (weather).
 
-팀이 기능을 분담해 병렬로 개발한다. 각 기능 내부에선 더미·하드코딩 우회를 피하고 실제 모델·실제 데이터로 구현한다.
+## 2. Core Rules
 
-## 아키텍처
+- **All 8 features ship as P0** — real AI + real data, judges click anything live. Override the roadmap's P0–P3 split.
+- **The 8**: mode select, TOP-3 recommendation, 1-year twin, shipping dashboard, farming calendar, KakaoTalk alerts, weekend direct-trade / neighbor-share, B2G license.
+- **No dummy bypasses.** Static mocks live only in `frontend/src/lib/**/mock.ts` during wireframe phase; production reads the API.
+- **Mobile-first, responsive mandatory.**
+- **Simulation screens must show** *"우수농가 사례 평균값 기반의 참고 수치"*.
+- **Secrets via env vars only.** Cache public-data responses locally — treat upstream as flaky.
+- **Cross-page state**: `sessionStorage` namespaced (e.g. `kiwofarm:onboarding`); `mode=returning|weekend` lives in the query string. No global store, no CSS-in-JS beyond Mantine, no placeholder routes.
 
-모노레포, `frontend/` + `backend/` 분리.
+## 3. Communication Style
 
-```
-kiwofarm/
-├── frontend/   # Next.js 14 (App Router) + TS + Mantine v7
-├── backend/    # Python 3.11 + FastAPI + SQLAlchemy + Alembic
-└── docs/
-```
-
-### Frontend
-- Next.js 14 App Router, TypeScript, Mantine v7
-- 데이터 페칭: TanStack Query, 차트: Mantine Charts (Recharts)
-- 배포: Vercel → kiwofarm.com
-- 주요 라우트: `/onboarding`, `/recommend`, `/recommend/result`, `/twin/[cropId]`, `/dashboard`, `/calendar`
-
-### Backend
-- **Python 환경은 uv로 관리** — 의존성은 `uv add`, 설치는 `uv sync`, 실행은 `uv run`
-- FastAPI 진입: `backend/app/main.py`
-- 도메인 로직: `app/core/{recommend,twin,dashboard}/`
-- 공공데이터 클라이언트: `app/data/` (스마트팜코리아, 농사로, KAMIS, 기상청)
-- DB: PostgreSQL 16 (docker-compose 로컬), 배포는 Railway
-- 마이그레이션: Alembic
-
-### AI/ML 구성 (현실 노선)
-- 작목 추천: **XGBoost + 룰베이스 하이브리드** (학습 데이터 부족 대비)
-- 가격 예측: **Prophet 메인** (LSTM은 발표 자료에만 "앙상블"로 기재)
-- 추천 이유 자연어: **GPT-4o** (`core/recommend/llm_reason.py`)
-- 디지털 트윈: **결정론적 시뮬레이션 + 노이즈** (강화학습 대신)
-
-## 공공데이터 출처
-
-| 데이터 | 용도 |
-|---|---|
-| 스마트팜코리아 CSV (우수농가/혁신밸리) | 추천 학습, 트윈 기준 |
-| 농사로 작목·병해충 | 위기 탐지, 영농 캘린더 |
-| KAMIS 도매가 | 14일 가격 예측, 출하 의사결정 |
-| 기상청 ASOS | 기후 매칭, 위기 예측 |
-
-## 시연 시나리오 (5단계 종단 흐름)
-
-옥천 부부 페르소나 "박경수"로 1분 30초 안에:
-
-1. 모드 선택 (귀농)
-2. 조건 입력 (지역/자본금/면적/시설/노동력)
-3. 작목 TOP 3 결과 + LLM 추천 이유
-4. 디지털 트윈 1년 시뮬레이션 (매출·노동·위기 타임라인)
-5. 출하 의사결정 대시보드 (★ 점수 + 14일 예측)
-
-발표 라이브 데모 실패 대비 **시드 데이터 + 백업 영상 필수**.
-
-## 작업 관례
-
-- 새 기능 시작 전 등급(P0~P3) 확인 → 그 수준 이상으로 과투자 금지
-- 작목 우선순위: **토마토 > 고구마 > 블루베리** (시드 데이터 확보된 3종)
-- "옥천" 지역은 시연 페르소나 기준 — 시드 데이터는 옥천 위주로 준비
-- 모바일 반응형 필수 (와이어프레임이 모바일 기준)
+- **Korean** for user-facing UI, commits, and conversation with the user. Code identifiers stay English.
+- **Terse.** Short declarative sentences. Lead with the result.
+- **No filler comments** — only the non-obvious *why*. **No emojis** in code/commits (UI emojis fine when meaningful).
+- **Korean UI copy**: declarative, no exclamation marks, `toLocaleString()`, `₩…만원` for large agricultural figures.
+- **Confirm before risky moves** (destructive git, schema changes, force push, deploy). Local edits and tests are free.
+- **Exploratory questions** → 2–3 sentence recommendation with the main tradeoff, not a finished plan.

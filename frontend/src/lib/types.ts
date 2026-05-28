@@ -1,21 +1,95 @@
-export type Mode = 'farming' | 'weekend';
+// Single source of truth for shared domain types.
+// Backend Pydantic schemas in `backend/app/schemas/` must stay structurally aligned with this file.
 
-export interface RecommendRequest {
+import type { CropId } from './constants';
+
+// ───────────── Mode & onboarding ─────────────
+
+export type Mode = 'returning' | 'weekend';
+
+export type AreaUnit = 'pyeong' | 'sqm' | 'hectare';
+export type FacilityType = 'open_field' | 'vinyl_house' | 'smart_farm';
+export type VisitFrequency = 'weekly_1' | 'weekly_2' | 'biweekly' | 'monthly';
+
+export interface OnboardingInput {
   mode: Mode;
   region: string;
-  capital?: number;
-  area?: number;
-  facility?: string;
-  labor?: number;
+  area: number;
+  areaUnit: AreaUnit;
+  laborCount: number;
+  preferredCrops: string[];
+  // returning-only
+  budgetManwon?: number;
+  facility?: FacilityType;
+  // weekend-only
+  visitFrequency?: VisitFrequency;
 }
 
-export interface CropRecommendation {
-  cropId: string;
-  name: string;
-  expectedRevenue: number;
-  difficulty: 'easy' | 'medium' | 'hard';
-  reason: string;
+// ───────────── Crop recommendation ─────────────
+
+export type CropPhase = 'rest' | 'seeding' | 'growing' | 'harvest';
+
+export interface CalendarMonth {
+  month: number;
+  phase: CropPhase;
 }
+
+export type Difficulty = 1 | 2 | 3 | 4 | 5;
+export type CropColor = 'red' | 'orange' | 'indigo';
+
+export interface CropRecommendation {
+  cropId: CropId | string;
+  name: string;
+  emoji: string;
+  matchScore: number;
+  difficulty: Difficulty;
+  expectedRevenueManwon: number;
+  expectedNetManwon: number;
+  expectedYieldKg: number;
+  expectedDirectPriceWon: number;
+  llmReason: string;
+  tags: string[];
+  calendar: CalendarMonth[];
+  peerFarms: number;
+  peerAgreeRate: number;
+  color: CropColor;
+}
+
+// ───────────── Digital twin ─────────────
+
+export type AlertType = 'pest' | 'price' | 'weather' | 'labor';
+export type Severity = 'low' | 'medium' | 'high';
+
+export interface MonthlyPoint {
+  month: string;
+  monthNum: number;
+  revenueManwon: number;
+  laborHours: number;
+  phase: CropPhase;
+}
+
+export interface CrisisAlert {
+  month: number;
+  type: AlertType;
+  title: string;
+  detail: string;
+  severity: Severity;
+}
+
+export interface TwinData {
+  cropId: CropId | string;
+  name: string;
+  emoji: string;
+  totalRevenueManwon: number;
+  totalCostManwon: number;
+  totalLaborHours: number;
+  peakLaborMonth: number;
+  monthly: MonthlyPoint[];
+  alerts: CrisisAlert[];
+  aiCoach: string;
+}
+
+// ───────────── Shipping dashboard (existing) ─────────────
 
 export interface PricePoint {
   date: string;
